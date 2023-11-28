@@ -16,16 +16,25 @@
 
 package org.gradle.api.problems.internal;
 
+import org.gradle.api.Action;
 import org.gradle.api.problems.Problem;
+import org.gradle.api.problems.ProblemSpec;
+import org.gradle.api.problems.ProblemReporter;
 
-public class DefaultProblemProgressDetails implements ProblemProgressDetails {
-    private final Problem problem;
+public interface InternalProblemReporter extends ProblemReporter {
 
-    public DefaultProblemProgressDetails(Problem problem) {
-        this.problem = problem;
-    }
-
-    public Problem getProblem() {
-        return problem;
-    }
+    /**
+     * Creates a new problem without reporting it immediately.
+     * The created problem can be later reported with {@link #report(Problem)}.
+     *
+     * @param action The problem configuration.
+     * @return The new problem.
+     */
+    Problem create(Action<ProblemSpec> action);
+    /**
+     * Reports the target problem.
+     *
+     * @param problem The problem to report.
+     */
+    void report(Problem problem);
 }

@@ -17,14 +17,16 @@
 package org.gradle.configurationcache.flow
 
 import com.google.common.collect.ImmutableList
+import org.gradle.api.Action
 import org.gradle.api.Task
 import org.gradle.api.flow.FlowParameters
 import org.gradle.api.internal.tasks.AbstractTaskDependencyResolveContext
 import org.gradle.api.internal.tasks.properties.InspectionSchemeFactory
 import org.gradle.api.problems.Problem
+import org.gradle.api.problems.ProblemSpec
 import org.gradle.api.problems.Problems
-import org.gradle.api.problems.ReportableProblem
 import org.gradle.api.problems.Severity
+import org.gradle.api.problems.internal.InternalProblems
 import org.gradle.api.services.BuildService
 import org.gradle.api.services.ServiceReference
 import org.gradle.api.tasks.Input
@@ -59,7 +61,7 @@ class FlowParametersInstantiator(
         inspection.propertyWalker.visitProperties(
             parameters,
             object : ProblemRecordingTypeValidationContext(type, { Optional.empty() }) {
-                override fun recordProblem(problem: ReportableProblem) {
+                override fun recordProblem(problem: Problem) {
                     problems.add(problem)
                 }
             },
@@ -75,14 +77,14 @@ class FlowParametersInstantiator(
                         object : AbstractTaskDependencyResolveContext() {
                             override fun add(dependency: Any) {
                                 problems.add(
-                                    problemsService.create { builder ->
-                                        builder
-                                            .label("Property '$propertyName' cannot carry a dependency on $dependency as these are not yet supported.")
-                                            .undocumented()
-                                            .noLocation()
-                                            .category("validation", "property", "invalid-dependency")
-                                            .severity(Severity.ERROR)
-                                    })
+                                    (problemsService as InternalProblems).internalProblemReporter().create(object : Action<ProblemSpec> {
+                                        override fun execute(builder: ProblemSpec) {
+                                            builder
+                                                .label("Property '$propertyName' cannot carry a dependency on $dependency as these are not yet supported.")
+                                                .category("validation", "property", "invalid-dependency")
+                                                .severity(Severity.ERROR)
+                                        }
+                                    }))
                             }
 
                             override fun getTask(): Task? = null
