@@ -19,7 +19,6 @@ package org.gradle.api.internal.file.archive;
 import org.gradle.api.file.FilePermissions;
 import org.gradle.api.file.FileVisitDetails;
 import org.gradle.api.file.RelativePath;
-import org.gradle.api.file.SymbolicLinkDetails;
 import org.gradle.api.internal.file.CopyableFileTreeElement;
 import org.gradle.api.internal.file.DefaultFilePermissions;
 
@@ -59,7 +58,7 @@ public abstract class AbstractArchiveFileTreeElement<ENTRY, METADATA extends Arc
     }
 
     protected ENTRY getResultEntry() {
-        if (archiveMetadata.isSymlink(entry) && !preserveLink && linkDetails.targetExists()) {
+        if (linkDetails != null && !preserveLink && linkDetails.targetExists()) {
             return linkDetails.getTargetEntry();
         } else {
             return entry;
@@ -114,7 +113,7 @@ public abstract class AbstractArchiveFileTreeElement<ENTRY, METADATA extends Arc
 
     @Nullable
     @Override
-    public SymbolicLinkDetails getSymbolicLinkDetails() {
+    public ArchiveSymbolicLinkDetails<ENTRY> getSymbolicLinkDetails() {
         return linkDetails;
     }
 

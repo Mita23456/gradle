@@ -16,7 +16,6 @@
 
 package org.gradle.api.internal.file.archive;
 
-import org.gradle.api.file.FileVisitDetails;
 import org.gradle.api.file.FileVisitor;
 import org.gradle.api.file.LinksStrategy;
 import org.gradle.internal.file.Chmod;
@@ -75,7 +74,7 @@ public abstract class ArchiveVisitor<ENTRY> {
 
     abstract @Nullable ENTRY getEntry(String path);
 
-    abstract FileVisitDetails createDetails(
+    abstract AbstractArchiveFileTreeElement<ENTRY, ? extends ArchiveVisitor<ENTRY>> createDetails(
         ENTRY entry,
         String targetPath,
         @Nullable ArchiveSymbolicLinkDetails<ENTRY> linkDetails,
@@ -135,17 +134,19 @@ public abstract class ArchiveVisitor<ENTRY> {
     }
 
     protected void visitEntry(ENTRY entry, String targetPath, boolean extract) {
-        ArchiveSymbolicLinkDetails<ENTRY> linkDetails = null;
+        AbstractArchiveFileTreeElement<ENTRY, ? extends ArchiveVisitor<ENTRY>> details;
         if (isSymlink(entry)) {
-            linkDetails = new ArchiveSymbolicLinkDetails<>(entry, this);
+            ArchiveSymbolicLinkDetails<ENTRY> linkDetails = new ArchiveSymbolicLinkDetails<>(entry, this);
+            boolean preserveLink = linksStrategy.shouldBePreserved(linkDetails, targetPath);
+            details = createDetails(entry, targetPath, linkDetails, preserveLink);
+        } else {
+            details = createDetails(entry, targetPath, null, false);
         }
-        boolean preserveLink = linksStrategy.shouldBePreserved(linkDetails, targetPath);
-        FileVisitDetails details = createDetails(entry, targetPath, linkDetails, preserveLink);
         if (details.isDirectory()) {
             visitor.visitDir(details);
             if (isSymlink(entry)) {
                 @SuppressWarnings("DataFlowIssue") // if it is a dir, then it always has a target
-                ENTRY targetEntry = linkDetails.getTargetEntry();
+                ENTRY targetEntry = details.getSymbolicLinkDetails().getTargetEntry();
                 String originalPath = getPath(targetEntry);
                 visitRecursively(originalPath, targetPath + '/');
             }
