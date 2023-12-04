@@ -19,7 +19,7 @@ package org.gradle.tooling.internal.protocol;
 import org.gradle.api.NonNullApi;
 
 @NonNullApi
-public interface InternalProblemDetails {
+public interface InternalProblemDetails extends InternalProblemCommonDetails {
 
     String getJson();
 }

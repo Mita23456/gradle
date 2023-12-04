@@ -14,14 +14,21 @@
  * limitations under the License.
  */
 
-package org.gradle.api.problems.internal.emitters;
+package org.gradle.api.problems.internal;
 
 import org.gradle.api.problems.Problem;
-import org.gradle.api.problems.ProblemEmitter;
+import org.gradle.api.problems.ProblemSummary;
+
+import java.util.List;
 
 public class NoOpProblemEmitter implements ProblemEmitter {
     @Override
     public void emit(Problem problem) {
+        // Do nothing
+    }
+
+    @Override
+    public void emit(List<ProblemSummary> summaries) {
         // Do nothing
     }
 }

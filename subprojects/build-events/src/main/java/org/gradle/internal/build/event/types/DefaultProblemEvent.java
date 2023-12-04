@@ -17,17 +17,17 @@
 package org.gradle.internal.build.event.types;
 
 import org.gradle.api.NonNullApi;
+import org.gradle.tooling.internal.protocol.InternalProblemCommonDetails;
 import org.gradle.tooling.internal.protocol.InternalProblemEvent;
 import org.gradle.tooling.internal.protocol.events.InternalProblemDescriptor;
-import org.gradle.tooling.internal.protocol.InternalProblemDetails;
 
 @NonNullApi
 public class DefaultProblemEvent extends AbstractProgressEvent<InternalProblemDescriptor> implements InternalProblemEvent {
-    private final InternalProblemDetails details;
+    private final InternalProblemCommonDetails details;
 
     public DefaultProblemEvent(
         InternalProblemDescriptor descriptor,
-        InternalProblemDetails details
+        InternalProblemCommonDetails details
     ) {
         super(System.currentTimeMillis(), descriptor);
         this.details = details;
@@ -38,7 +38,7 @@ public class DefaultProblemEvent extends AbstractProgressEvent<InternalProblemDe
     }
 
     @Override
-    public InternalProblemDetails getDetails() {
+    public InternalProblemCommonDetails getDetails() {
         return details;
     }
 }

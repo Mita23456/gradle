@@ -20,8 +20,10 @@ import org.gradle.api.NonNullApi;
 import org.gradle.api.problems.DocLink;
 import org.gradle.api.problems.Problem;
 import org.gradle.api.problems.ProblemCategory;
+import org.gradle.api.problems.ProblemSummary;
 import org.gradle.api.problems.Severity;
 import org.gradle.api.problems.internal.DefaultProblemProgressDetails;
+import org.gradle.api.problems.internal.DefaultProblemProgressSummaryDetails;
 import org.gradle.api.problems.locations.FileLocation;
 import org.gradle.api.problems.locations.PluginIdLocation;
 import org.gradle.api.problems.locations.ProblemLocation;
@@ -30,12 +32,14 @@ import org.gradle.internal.build.event.types.DefaultAdditionalData;
 import org.gradle.internal.build.event.types.DefaultDetails;
 import org.gradle.internal.build.event.types.DefaultDocumentationLink;
 import org.gradle.internal.build.event.types.DefaultFileLocation;
+import org.gradle.internal.build.event.types.DefaultInternalProblemSummary;
 import org.gradle.internal.build.event.types.DefaultLabel;
 import org.gradle.internal.build.event.types.DefaultPluginIdLocation;
 import org.gradle.internal.build.event.types.DefaultProblemCategory;
 import org.gradle.internal.build.event.types.DefaultProblemDescriptor;
 import org.gradle.internal.build.event.types.DefaultProblemDetails;
 import org.gradle.internal.build.event.types.DefaultProblemEvent;
+import org.gradle.internal.build.event.types.DefaultProblemSummaryDetails;
 import org.gradle.internal.build.event.types.DefaultSeverity;
 import org.gradle.internal.build.event.types.DefaultSolution;
 import org.gradle.internal.build.event.types.DefaultTaskPathLocation;
@@ -45,6 +49,7 @@ import org.gradle.internal.operations.BuildOperationListener;
 import org.gradle.internal.operations.OperationFinishEvent;
 import org.gradle.internal.operations.OperationIdentifier;
 import org.gradle.internal.operations.OperationProgressEvent;
+import org.gradle.tooling.internal.protocol.InternalProblemSummary;
 import org.gradle.tooling.internal.protocol.problem.InternalAdditionalData;
 import org.gradle.tooling.internal.protocol.problem.InternalDetails;
 import org.gradle.tooling.internal.protocol.problem.InternalDocumentationLink;
@@ -59,6 +64,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static com.google.common.collect.ImmutableList.toImmutableList;
 
 @NonNullApi
 public class ProblemsProgressEventConsumer extends ClientForwardingBuildOperationListener implements BuildOperationListener {
@@ -79,27 +86,46 @@ public class ProblemsProgressEventConsumer extends ClientForwardingBuildOperatio
         Object details = progressEvent.getDetails();
         if (details instanceof DefaultProblemProgressDetails) {
             Problem problem = ((DefaultProblemProgressDetails) details).getProblem();
-            eventConsumer.progress(
-                new DefaultProblemEvent(
-                    new DefaultProblemDescriptor(
-                        new OperationIdentifier(
-                            idFactory.nextId()
-                        ),
-                        buildOperationId),
-                    new DefaultProblemDetails(
-                        toInternalCategory(problem.getProblemCategory()),
-                        toInternalLabel(problem.getLabel()),
-                        toInternalDetails(problem.getDetails()),
-                        toInternalSeverity(problem.getSeverity()),
-                        toInternalLocations(problem.getLocations()),
-                        toInternalDocumentationLink(problem.getDocumentationLink()),
-                        toInternalSolutions(problem.getSolutions()),
-                        toInternalAdditionalData(problem.getAdditionalData()),
-                        problem.getException()
-                    )
-                )
-            );
+            eventConsumer.progress(createProblemEvent(buildOperationId, problem));
+        } else if (details instanceof DefaultProblemProgressSummaryDetails) {
+            DefaultProblemProgressSummaryDetails progressSummaryDetails = (DefaultProblemProgressSummaryDetails) details;
+            List<ProblemSummary> summaries = progressSummaryDetails.getSummaries();
+            List<InternalProblemSummary> internalSummaries = summaries.stream()
+                .map(summary -> new DefaultInternalProblemSummary(
+                    toInternalCategory(summary.getProblemCategory()),
+                    toInternalLabel(summary.getLabel()),
+                    toInternalDetails(summary.getDetails()),
+                    toInternalSeverity(summary.getSeverity()),
+                    toInternalLocations(summary.getLocations()),
+                    toInternalDocumentationLink(summary.getDocumentationLink()),
+                    toInternalSolutions(summary.getSolutions()),
+                    toInternalAdditionalData(summary.getAdditionalData()),
+                    summary.getCount()))
+                .collect(toImmutableList());
+            eventConsumer.progress(new DefaultProblemEvent(new DefaultProblemDescriptor(
+                new OperationIdentifier(idFactory.nextId()),
+                buildOperationId),
+                new DefaultProblemSummaryDetails(internalSummaries)));
         }
+    }
+
+    private DefaultProblemEvent createProblemEvent(OperationIdentifier buildOperationId, Problem problem) {
+        return new DefaultProblemEvent(
+            new DefaultProblemDescriptor(
+                new OperationIdentifier(idFactory.nextId()),
+                buildOperationId),
+            new DefaultProblemDetails(
+                toInternalCategory(problem.getProblemCategory()),
+                toInternalLabel(problem.getLabel()),
+                toInternalDetails(problem.getDetails()),
+                toInternalSeverity(problem.getSeverity()),
+                toInternalLocations(problem.getLocations()),
+                toInternalDocumentationLink(problem.getDocumentationLink()),
+                toInternalSolutions(problem.getSolutions()),
+                toInternalAdditionalData(problem.getAdditionalData()),
+                problem.getException()
+            )
+        );
     }
 
     private static InternalProblemCategory toInternalCategory(ProblemCategory category) {
@@ -116,10 +142,14 @@ public class ProblemsProgressEventConsumer extends ClientForwardingBuildOperatio
 
     private static InternalSeverity toInternalSeverity(Severity severity) {
         switch (severity) {
-            case ADVICE: return ADVICE;
-            case WARNING: return WARNING;
-            case ERROR: return ERROR;
-            default: throw new RuntimeException("No mapping defined for severity level " + severity);
+            case ADVICE:
+                return ADVICE;
+            case WARNING:
+                return WARNING;
+            case ERROR:
+                return ERROR;
+            default:
+                throw new RuntimeException("No mapping defined for severity level " + severity);
         }
     }
 
